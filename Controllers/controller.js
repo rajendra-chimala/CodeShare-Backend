@@ -2,27 +2,31 @@ const express = require("express");
 const DBModel = require("../Model/Schema");
 
 const addCodes = async (req, res) => {
-  const newCode = new DBModel(req.body);
+  const { codeId, codeText } = req.body;
 
-  if (!newCode.codeId || !newCode.codeText) {
+  if (!codeId || !codeText) {
     return res
       .status(400)
       .json({ error: "Code ID and Code Text are required" });
   }
-
-  if (newCode.codeText.length > 5000) {
+  if (typeof codeId !== "string" || typeof codeText !== "string") {
+    return res
+      .status(400)
+      .json({ error: "Code ID and Code Text must be strings" });
+  }
+  if (codeText.length > 5000) {
     return res
       .status(400)
       .json({ error: "Code Text exceeds maximum length of 5000 characters" });
   }
 
-  if (newCode.codeId.length > 100) {
+  if (codeId.length > 100) {
     return res
       .status(400)
       .json({ error: "Code ID exceeds maximum length of 100 characters" });
   }
 
-  const isExist = await DBModel.findOne({ codeId: newCode.codeId }).then(
+  const isExist = await DBModel.findOne({ codeId: codeId }).then(
     (existingCode) => {
       return existingCode !== null;
     }
@@ -32,14 +36,17 @@ const addCodes = async (req, res) => {
     return res.status(400).json({ error: "Code ID already exists" });
   }
 
-  newCode
-    .save()
-    .then(() => {
-      res.status(201).json({ message: "Code added successfully" });
-    })
-    .catch((err) => {
-      res.status(500).json({ error: "Failed to add code" });
+  try {
+    await DBModel.create({
+      codeId: codeId,
+      codeText: codeText,
     });
+
+    res.status(201).json({ message: "Code added successfully" });
+  } catch (error) {
+    console.error("Error adding code:", error);
+    res.status(500).json({ error: "Failed to add code" });
+  }
 };
 
 const getCodeById = (req, res) => {
